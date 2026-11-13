@@ -2,6 +2,29 @@ import { Suspense } from "react";
 import { getSession } from "@/lib/auth/auth";
 import connectDB from "@/lib/db";
 import { Board } from "@/lib/models";
+import KanbanBoard from "@/components/kanban-board";
+
+async function getBoard(userId: string) {
+  "use cache";
+
+  await connectDB();
+
+  const boardDoc = await Board.findOne({
+    userId: userId,
+    name: "Job Hunt",
+  }).populate({
+    path: "columns",
+    populate: {
+      path: "jobApplications",
+    },
+  });
+
+  if (!boardDoc) return null;
+
+  const board = JSON.parse(JSON.stringify(boardDoc));
+
+  return board;
+}
 
 export default function Dashboard() {
   return (
@@ -13,15 +36,7 @@ export default function Dashboard() {
 
 async function DashboardContent() {
   const session = await getSession();
-
-  await connectDB();
-
-  const board = await Board.findOne({
-    userId: session?.user?.id,
-    name: "Job Hunt",
-  });
-
-  console.log(board);
+  const board = await getBoard(session?.user.id ?? "");
 
   return (
     <div className="max-h-screen bg-white">
@@ -30,6 +45,8 @@ async function DashboardContent() {
           <h1 className="text-3xl font-bold text-black">{board.name}</h1>
           <p className="text-gray-600">Track your job applications</p>
         </div>
+
+        <KanbanBoard board={board} userId={session?.user?.id ?? ""} />
       </div>
     </div>
   );
